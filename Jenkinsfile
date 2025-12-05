@@ -7,6 +7,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -15,19 +16,19 @@ pipeline {
         }
 
         stage('Build & Test with Maven') {
-    steps {
-        sh 'mvn clean test jacoco:report'
-    }
-}
+            steps {
+                // Build + tests + génération du JAR + rapport Jacoco
+                sh 'mvn clean package jacoco:report'
+            }
+        }
 
-stage('Analyse SonarQube') {
+        stage('Analyse SonarQube') {
     steps {
         withSonarQubeEnv('sonarqube-docker') { // <-- le nom EXACT du serveur dans Jenkins
             sh 'mvn sonar:sonar'
         }
     }
 }
-
 
         stage('MVN SONARQUBE') {
             steps {
@@ -38,7 +39,7 @@ stage('Analyse SonarQube') {
                     sh """
                         mvn sonar:sonar \
                           -Dsonar.host.url=${SONAR_HOST} \
-                          -Dsonar.login=$SONAR_TOKEN
+                          -Dsonar.login=\$SONAR_TOKEN
                     """
                 }
             }
@@ -46,7 +47,13 @@ stage('Analyse SonarQube') {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${DOCKER_IMAGE} -f Docker/student-app/Dockerfile .'
+                sh """
+                    echo "=== Workspace content ==="
+                    ls -R
+
+                    echo "=== Building Docker image ==="
+                    docker build -t ${DOCKER_IMAGE} -f Docker/student-app/Dockerfile .
+                """
             }
         }
 
@@ -57,12 +64,16 @@ stage('Analyse SonarQube') {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    sh """
+                        echo "\$DOCKER_PASS" | docker login -u "\$DOCKER_USER" --password-stdin
                         docker push ${DOCKER_IMAGE}
-                    '''
+                    """
                 }
             }
         }
     }
 }
+
+
+
+
