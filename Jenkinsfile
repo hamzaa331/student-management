@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "hamzaab325/student-management:1.0.0"
+        SONAR_HOST   = "http://localhost:9000"
     }
 
     stages {
@@ -16,6 +17,21 @@ pipeline {
         stage('Build JAR with Maven') {
             steps {
                 sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('MVN SONARQUBE') {
+            steps {
+                withCredentials([string(
+                    credentialsId: 'sonar-token',
+                    variable: 'SONAR_TOKEN'
+                )]) {
+                    sh """
+                        mvn sonar:sonar \
+                          -Dsonar.host.url=${SONAR_HOST} \
+                          -Dsonar.login=$SONAR_TOKEN
+                    """
+                }
             }
         }
 
