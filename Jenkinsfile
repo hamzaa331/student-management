@@ -22,9 +22,7 @@ pipeline {
 
 stage('Analyse SonarQube') {
     steps {
-        withSonarQubeEnv('sonarqube-docker') { // <-- le nom EXACT du serveur dans Jenkins
-            sh 'mvn sonar:sonar'
-        }
+        sh 'mvn sonar:sonar'
     }
 }
 
