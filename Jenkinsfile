@@ -14,11 +14,18 @@ pipeline {
             }
         }
 
-        stage('Build JAR with Maven') {
-            steps {
-                sh 'mvn clean package -DskipTests'
-            }
-        }
+        stage('Build & Test with Maven') {
+    steps {
+        sh 'mvn clean test jacoco:report'
+    }
+}
+
+stage('Analyse SonarQube') {
+    steps {
+        sh 'mvn sonar:sonar'
+    }
+}
+
 
         stage('MVN SONARQUBE') {
             steps {
