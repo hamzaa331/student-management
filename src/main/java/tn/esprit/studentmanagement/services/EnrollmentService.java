@@ -1,6 +1,6 @@
 package tn.esprit.studentmanagement.services;
 
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.stereotype.Service;
 import tn.esprit.studentmanagement.repositories.EnrollmentRepository;
 import tn.esprit.studentmanagement.entities.Enrollment;
@@ -8,7 +8,7 @@ import java.util.List;
 
 @Service
 public class EnrollmentService implements IEnrollment {
-    @Autowired
+
     EnrollmentRepository enrollmentRepository;
 
     @Override
