@@ -15,6 +15,13 @@ pipeline {
             }
         }
 
+        stage('Test') {
+            steps {
+                // clean + compile + run tests
+                sh 'mvn clean test'
+            }
+        }
+
         stage('Build & Test with Maven') {
             steps {
                 // Build + tests + génération du JAR + rapport Jacoco
