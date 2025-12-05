@@ -16,7 +16,8 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 
-public class DepartmentServiceTest {
+class DepartmentServiceTest {
+
 
     @Mock
     DepartmentRepository departmentRepository;
