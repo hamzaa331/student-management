@@ -11,4 +11,11 @@ class StudentManagementApplicationTests {
     @Test
     void contextLoads() {
     }
+
+    @Test
+    void mainMethodRuns() {
+        // Appelle la méthode main pour couvrir StudentManagementApplication.main()
+        StudentManagementApplication.main(new String[]{});
+    }
+    
 }
