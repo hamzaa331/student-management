@@ -10,5 +10,8 @@ ARG JAR_FILE=target/*.jar
 # Copier le jar généré par Maven dans l'image
 COPY ${JAR_FILE} app.jar
 
+# Exposer le port de l'application
+EXPOSE 8089
+
 # Commande de lancement
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
