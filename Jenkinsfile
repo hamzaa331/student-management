@@ -2,50 +2,39 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = 'hamzaab325'
-        IMAGE_NAME = "${DOCKERHUB_USER}/student-management"
-        IMAGE_TAG  = "1.0.0"
+        DOCKER_IMAGE = "hamzaab325/student-management:1.0.0"
     }
 
     stages {
-
         stage('Checkout') {
             steps {
-                // Normalement Jenkins fait déjà checkout, mais on le force pour être clean
-                checkout scm
+                git branch: 'main',
+                    url: 'https://github.com/hamzaa331/student-management.git'
             }
         }
 
-        stage('Show Maven Version') {
+        stage('Build JAR with Maven') {
             steps {
-                sh 'mvn -version'
-            }
-        }
-
-        stage('Build Jar with Maven') {
-            steps {
-                // Build du jar Spring Boot
                 sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                // Build de l'image Docker à partir du Dockerfile student-app
-                sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -f Docker/student-app/Dockerfile .'
+                sh 'docker build -t ${DOCKER_IMAGE} -f Docker/student-app/Dockerfile .'
             }
         }
 
         stage('Login to Docker Hub & Push') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
+                    credentialsId: 'dockerhub-cred',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     sh '''
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${DOCKER_IMAGE}
                     '''
                 }
             }
