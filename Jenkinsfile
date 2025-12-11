@@ -82,23 +82,28 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh """
+                 sh '''
                     echo "=== Déploiement sur Kubernetes (namespace devops) ==="
 
-                    kubectl apply -f k8s/mysql-deployment.yaml -n devops
-                    kubectl apply -f k8s/spring-deployment.yaml -n devops
+                    # Dire à kubectl d'utiliser le kubeconfig du user jenkins
+                    export KUBECONFIG=/var/lib/jenkins/.kube/config
 
-                    echo "=== Rollout status ==="
-                    kubectl rollout status deployment/mysql-deployment -n devops
-                    kubectl rollout status deployment/student-management-deployment -n devops
+                    # ⚠ kubectl avec son chemin COMPLET
+                   /usr/local/bin/kubectl apply -f k8s/mysql-deployment.yaml -n devops
+                   /usr/local/bin/kubectl apply -f k8s/spring-deployment.yaml -n devops
 
-                    echo "=== Pods dans le namespace devops ==="
-                    kubectl get pods -n devops
+                   echo "=== Rollout status ==="
+                   /usr/local/bin/kubectl rollout status deployment/mysql-deployment -n devops
+                   /usr/local/bin/kubectl rollout status deployment/student-management-deployment -n devops
 
-                    echo "=== Services dans le namespace devops ==="
-                    kubectl get svc -n devops
-                """
-            }
+                   echo "=== Pods dans le namespace devops ==="
+                   /usr/local/bin/kubectl get pods -n devops
+
+                   echo "=== Services dans le namespace devops ==="
+                   /usr/local/bin/kubectl get svc -n devops
+                   '''
+                   }
         }
+
     }
 }
