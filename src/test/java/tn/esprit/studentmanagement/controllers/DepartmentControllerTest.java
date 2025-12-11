@@ -12,15 +12,18 @@ import static org.mockito.Mockito.*;
 class DepartmentControllerTest {
 
     @Test
-    void getAllDepartment_shouldReturnListFromService() {
+    void getAllDepartments_shouldReturnListFromService() {
         IDepartmentService service = mock(IDepartmentService.class);
-        when(service.getAllDepartments()).thenReturn(List.of(new Department(), new Department()));
+        List<Department> departments = List.of(new Department(), new Department());
+        when(service.getAllDepartments()).thenReturn(departments);
 
         DepartmentController controller = new DepartmentController(service);
 
-        List<Department> result = controller.getAllDepartment();
+        // 🔥 IMPORTANT: méthode correcte = getAllDepartments()
+        List<Department> result = controller.getAllDepartments();
 
         assertEquals(2, result.size());
+        assertSame(departments, result);
         verify(service).getAllDepartments();
     }
 
@@ -28,59 +31,51 @@ class DepartmentControllerTest {
     void getDepartment_shouldReturnDepartmentFromService() {
         IDepartmentService service = mock(IDepartmentService.class);
         Department dep = new Department();
-        dep.setIdDepartment(1L);
-
         when(service.getDepartmentById(1L)).thenReturn(dep);
 
         DepartmentController controller = new DepartmentController(service);
 
         Department result = controller.getDepartment(1L);
 
-        assertNotNull(result);
-        assertEquals(1L, result.getIdDepartment());
+        assertSame(dep, result);
         verify(service).getDepartmentById(1L);
     }
 
     @Test
-    void createDepartment_shouldCallServiceAndReturnResult() {
+    void createDepartment_shouldDelegateToService() {
         IDepartmentService service = mock(IDepartmentService.class);
-        Department dep = new Department();
-        dep.setName("Informatique");
-
-        when(service.saveDepartment(dep)).thenReturn(dep);
+        Department toSave = new Department();
+        when(service.saveDepartment(toSave)).thenReturn(toSave);
 
         DepartmentController controller = new DepartmentController(service);
 
-        Department result = controller.createDepartment(dep);
+        Department result = controller.createDepartment(toSave);
 
-        assertEquals("Informatique", result.getName());
-        verify(service).saveDepartment(dep);
+        assertSame(toSave, result);
+        verify(service).saveDepartment(toSave);
     }
 
     @Test
-    void updateDepartment_shouldCallServiceAndReturnResult() {
+    void updateDepartment_shouldDelegateToService() {
         IDepartmentService service = mock(IDepartmentService.class);
-        Department dep = new Department();
-        dep.setIdDepartment(5L);
-
-        when(service.saveDepartment(dep)).thenReturn(dep);
+        Department updated = new Department();
+        when(service.saveDepartment(updated)).thenReturn(updated);
 
         DepartmentController controller = new DepartmentController(service);
 
-        Department result = controller.updateDepartment(dep);
+        Department result = controller.updateDepartment(updated);
 
-        assertEquals(5L, result.getIdDepartment());
-        verify(service).saveDepartment(dep);
+        assertSame(updated, result);
+        verify(service).saveDepartment(updated);
     }
 
     @Test
-    void deleteDepartment_shouldCallServiceDelete() {
+    void deleteDepartment_shouldCallService() {
         IDepartmentService service = mock(IDepartmentService.class);
-
         DepartmentController controller = new DepartmentController(service);
 
-        controller.deleteDepartment(10L);
+        controller.deleteDepartment(1L);
 
-        verify(service).deleteDepartment(10L);
+        verify(service).deleteDepartment(1L);
     }
 }

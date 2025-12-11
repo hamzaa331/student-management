@@ -14,73 +14,77 @@ class StudentControllerTest {
     @Test
     void getAllStudents_shouldReturnListFromService() {
         IStudentService service = mock(IStudentService.class);
-        when(service.getAllStudents()).thenReturn(List.of(new Student(), new Student(), new Student()));
+        List<Student> students = List.of(new Student(), new Student());
+        when(service.getAllStudents()).thenReturn(students);
 
         StudentController controller = new StudentController(service);
 
         List<Student> result = controller.getAllStudents();
 
-        assertEquals(3, result.size());
+        assertEquals(2, result.size());
+        assertSame(students, result);
         verify(service).getAllStudents();
     }
 
     @Test
-    void getStudent_shouldReturnOneFromService() {
+    void getStudent_shouldReturnStudentFromService() {
         IStudentService service = mock(IStudentService.class);
-        Student s = new Student();
-        s.setIdStudent(1L);
-
-        when(service.getStudentById(1L)).thenReturn(s);
+        Student st = new Student();
+        when(service.getStudentById(1L)).thenReturn(st);
 
         StudentController controller = new StudentController(service);
 
         Student result = controller.getStudent(1L);
 
-        assertNotNull(result);
-        assertEquals(1L, result.getIdStudent());
+        assertSame(st, result);
         verify(service).getStudentById(1L);
     }
 
     @Test
-    void createStudent_shouldCallServiceAndReturnResult() {
+    void createStudent_shouldDelegateToService() {
         IStudentService service = mock(IStudentService.class);
-        Student s = new Student();
-        s.setFirstName("Hamza");
-
-        when(service.saveStudent(s)).thenReturn(s);
+        Student toSave = new Student();
+        when(service.saveStudent(toSave)).thenReturn(toSave);
 
         StudentController controller = new StudentController(service);
 
-        Student result = controller.createStudent(s);
+        Student result = controller.createStudent(toSave);
 
-        assertEquals("Hamza", result.getFirstName());
-        verify(service).saveStudent(s);
+        assertSame(toSave, result);
+        verify(service).saveStudent(toSave);
     }
 
     @Test
-    void updateStudent_shouldCallServiceAndReturnResult() {
+    void updateStudent_shouldDelegateToService() {
         IStudentService service = mock(IStudentService.class);
-        Student s = new Student();
-        s.setIdStudent(5L);
-
-        when(service.saveStudent(s)).thenReturn(s);
+        Student updated = new Student();
+        when(service.saveStudent(updated)).thenReturn(updated);
 
         StudentController controller = new StudentController(service);
 
-        Student result = controller.updateStudent(s);
+        Student result = controller.updateStudent(updated);
 
-        assertEquals(5L, result.getIdStudent());
-        verify(service).saveStudent(s);
+        assertSame(updated, result);
+        verify(service).saveStudent(updated);
     }
 
     @Test
-    void deleteStudent_shouldCallServiceDelete() {
+    void deleteStudent_shouldCallService() {
         IStudentService service = mock(IStudentService.class);
-
         StudentController controller = new StudentController(service);
 
-        controller.deleteStudent(9L);
+        controller.deleteStudent(1L);
 
-        verify(service).deleteStudent(9L);
+        verify(service).deleteStudent(1L);
+    }
+
+    @Test
+    void ping_shouldReturnOk() {
+        IStudentService service = mock(IStudentService.class);
+        StudentController controller = new StudentController(service);
+
+        String result = controller.ping();
+
+        assertEquals("OK", result);
     }
 }

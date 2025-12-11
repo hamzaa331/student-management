@@ -8,20 +8,27 @@ import tn.esprit.studentmanagement.services.IDepartmentService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/Depatment")
+@RequestMapping("/Depatment") // on garde l'orthographe comme dans ton projet
 @CrossOrigin(origins = "http://localhost:4200")
 @AllArgsConstructor
 public class DepartmentController {
-    private IDepartmentService departmentService;
 
-    @GetMapping("/getAllDepartment")
-    public List<Department> getAllDepartment() { return departmentService.getAllDepartments(); }
+    private final IDepartmentService departmentService;
+
+    @GetMapping("/getAllDepartments")
+    public List<Department> getAllDepartments() {
+        return departmentService.getAllDepartments();
+    }
 
     @GetMapping("/getDepartment/{id}")
-    public Department getDepartment(@PathVariable Long id) { return departmentService.getDepartmentById(id); }
+    public Department getDepartment(@PathVariable Long id) {
+        return departmentService.getDepartmentById(id);
+    }
 
     @PostMapping("/createDepartment")
-    public Department createDepartment(@RequestBody Department department) { return departmentService.saveDepartment(department); }
+    public Department createDepartment(@RequestBody Department department) {
+        return departmentService.saveDepartment(department);
+    }
 
     @PutMapping("/updateDepartment")
     public Department updateDepartment(@RequestBody Department department) {
@@ -30,5 +37,6 @@ public class DepartmentController {
 
     @DeleteMapping("/deleteDepartment/{id}")
     public void deleteDepartment(@PathVariable Long id) {
-      departmentService.deleteDepartment(id); }
+        departmentService.deleteDepartment(id);
+    }
 }

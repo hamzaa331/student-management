@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "hamzaab325/student-management:1.0.0"
+        // Mets bien la même version que dans ton Docker Hub ET dans ton YAML Kubernetes
+        DOCKER_IMAGE = "hamzaab325/student-management:1.0.2"
         SONAR_HOST   = "http://localhost:9000"
     }
 
@@ -17,27 +18,27 @@ pipeline {
 
         stage('Test') {
             steps {
-                // clean + compile + run tests
+                // clean + compile + tests
                 sh 'mvn clean test'
             }
         }
 
         stage('Build & Test with Maven') {
             steps {
-                // Build + tests + génération du JAR + rapport Jacoco
+                // Build complet + génération du JAR + rapport Jacoco
                 sh 'mvn clean package jacoco:report'
             }
         }
 
-        stage('Analyse SonarQube') {
-    steps {
-        withSonarQubeEnv('sonarqube-docker') { // <-- le nom EXACT du serveur dans Jenkins
-            sh 'mvn sonar:sonar'
+        stage('Analyse SonarQube (server config)') {
+            steps {
+                withSonarQubeEnv('sonarqube-docker') { // nom du serveur Sonar dans Jenkins
+                    sh 'mvn sonar:sonar'
+                }
+            }
         }
-    }
-}
 
-        stage('MVN SONARQUBE') {
+        stage('MVN SONARQUBE (avec token)') {
             steps {
                 withCredentials([string(
                     credentialsId: 'sonar-token',
@@ -67,7 +68,7 @@ pipeline {
         stage('Login to Docker Hub & Push') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-cred',
+                    credentialsId: 'dockerhub-cred',   // ID des credentials Docker dans Jenkins
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
@@ -78,9 +79,26 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh """
+                    echo "=== Déploiement sur Kubernetes (namespace devops) ==="
+
+                    kubectl apply -f k8s/mysql-deployment.yaml -n devops
+                    kubectl apply -f k8s/spring-deployment.yaml -n devops
+
+                    echo "=== Rollout status ==="
+                    kubectl rollout status deployment/mysql-deployment -n devops
+                    kubectl rollout status deployment/student-management-deployment -n devops
+
+                    echo "=== Pods dans le namespace devops ==="
+                    kubectl get pods -n devops
+
+                    echo "=== Services dans le namespace devops ==="
+                    kubectl get svc -n devops
+                """
+            }
+        }
     }
 }
-
-
-
-
