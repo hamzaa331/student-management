@@ -1,9 +1,7 @@
 package tn.esprit.studentmanagement.services;
 
-
-import org.springframework.stereotype.Service;
-
 import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
 import tn.esprit.studentmanagement.entities.Department;
 import tn.esprit.studentmanagement.repositories.DepartmentRepository;
 
@@ -34,6 +32,6 @@ public class DepartmentService implements IDepartmentService {
 
     @Override
     public void deleteDepartment(Long idDepartment) {
-departmentRepository.deleteById(idDepartment);
+        departmentRepository.deleteById(idDepartment);
     }
 }
