@@ -4,7 +4,7 @@ pipeline {
     environment {
         // Mets bien la même version que dans ton Docker Hub ET dans ton YAML Kubernetes
         DOCKER_IMAGE = "hamzaab325/student-management:1.0.2"
-        SONAR_HOST   = "http://localhost:9000"
+        SONAR_HOST   = "http://sonarqube:9000"
     }
 
     stages {
