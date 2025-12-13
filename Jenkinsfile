@@ -29,7 +29,6 @@ pipeline {
                 sh 'mvn clean package jacoco:report'
             }
         }
-/*
         stage('Analyse SonarQube (server config)') {
             steps {
                 withSonarQubeEnv('sonarqube-docker') { // nom du serveur Sonar dans Jenkins
@@ -37,7 +36,6 @@ pipeline {
                 }
             }
         }
-*/
         stage('MVN SONARQUBE (avec token)') {
             steps {
                 withCredentials([string(
