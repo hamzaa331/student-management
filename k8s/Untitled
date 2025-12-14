@@ -1,1 +1,0 @@
-kubectl -n devops port-forward svc/spring-service 8089:8089

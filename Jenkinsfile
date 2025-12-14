@@ -22,16 +22,34 @@ pipeline {
     }
 
     stage('Check Nexus') {
-      steps {
-        sh 'curl -I ${NEXUS_REPO} | head -n 5'
-      }
-    }
+  steps {
+    sh '''
+      set -e
+      code=$(curl -s -o /dev/null -w "%{http_code}" ${NEXUS_REPO})
+      echo "Nexus HTTP code: $code"
+      if [ "$code" != "200" ] && [ "$code" != "401" ]; then
+        echo "Nexus not reachable (expected 200 or 401)"
+        exit 1
+      fi
+    '''
+  }
+}
+
 
     stage('Build & Test (Maven via Nexus)') {
-      steps {
-        sh 'mvn -s settings.xml -U clean verify jacoco:report'
-      }
+  steps {
+    withCredentials([usernamePassword(
+      credentialsId: 'nexus-cred',
+      usernameVariable: 'NEXUS_USER',
+      passwordVariable: 'NEXUS_PASS'
+    )]) {
+      sh '''
+        mvn -s settings.xml -U clean verify jacoco:report
+      '''
     }
+  }
+}
+
 
     stage('SonarQube Analysis') {
   steps {
