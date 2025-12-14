@@ -2,17 +2,32 @@ pipeline {
     agent any
 
     environment {
-        // Mets bien la même version que dans ton Docker Hub ET dans ton YAML Kubernetes
-        DOCKER_IMAGE = "hamzaab325/student-management:1.0.2"
-        SONAR_HOST   = "http://localhost:9000"
+        DOCKER_IMAGE = "hamzaab325/student-management:1.0.3"
+
+        // SonarQube exposed as NodePort 30090
+        SONAR_HOST = "http://host.docker.internal:30090"
     }
 
     stages {
 
+        // ===============================
+        // 1. CHECKOUT
+        // ===============================
         stage('Checkout') {
             steps {
                 git branch: 'main',
                     url: 'https://github.com/hamzaa331/student-management.git'
+            }
+        }
+
+
+
+        // ===============================
+        // 2. CHECK NEXUS
+        // ===============================
+        stage('Check Nexus') {
+            steps {
+                sh 'curl -I http://host.docker.internal:8081/repository/maven-public/ | head -n 5'
             }
         }
 
@@ -22,26 +37,22 @@ pipeline {
                 sh 'mvn clean test'
             }
         }
+        
+        // ===============================
+        // 3. BUILD + TEST (MAVEN via NEXUS)
+        // ===============================
+        stage('Build & Test (Maven + Nexus)') {
+            steps {
+                sh 'mvn -s settings.xml clean verify jacoco:report'
+            }
+        }
 
-        stage('Build & Test with Maven') {
+        // ===============================
+        // 4. SONARQUBE ANALYSIS
+        // ===============================
+        stage('SonarQube Analysis') {
             steps {
-                // Build complet + génération du JAR + rapport Jacoco
-                sh 'mvn clean package jacoco:report'
-            }
-        }
-        stage('Analyse SonarQube (server config)') {
-            steps {
-                withSonarQubeEnv('sonarqube-docker') { // nom du serveur Sonar dans Jenkins
-                    sh 'mvn sonar:sonar'
-                }
-            }
-        }
-        stage('MVN SONARQUBE (avec token)') {
-            steps {
-                withCredentials([string(
-                    credentialsId: 'sonar-token',
-                    variable: 'SONAR_TOKEN'
-                )]) {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     sh """
                         mvn sonar:sonar \
                           -Dsonar.host.url=${SONAR_HOST} \
@@ -51,22 +62,22 @@ pipeline {
             }
         }
 
+        // ===============================
+        // 5. BUILD DOCKER IMAGE
+        // ===============================
         stage('Build Docker Image') {
             steps {
-                sh """
-                    echo "=== Workspace content ==="
-                    ls -R
-
-                    echo "=== Building Docker image ==="
-                    docker build -t ${DOCKER_IMAGE} -f Docker/student-app/Dockerfile .
-                """
+                sh 'docker build -t ${DOCKER_IMAGE} -f Docker/student-app/Dockerfile .'
             }
         }
 
-        stage('Login to Docker Hub & Push') {
+        // ===============================
+        // 6. PUSH TO DOCKER HUB
+        // ===============================
+        stage('Push Docker Image') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-cred',   // ID des credentials Docker dans Jenkins
+                    credentialsId: 'dockerhub-cred',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
@@ -78,50 +89,37 @@ pipeline {
             }
         }
 
+        // ===============================
+        // 7. DEPLOY TO KUBERNETES
+        // ===============================
         stage('Deploy to Kubernetes') {
-  steps {
-    sh '''
-      echo "=== K8s Deploy (minikube / namespace devops) ==="
+            steps {
+                sh '''
+                    echo "=== KUBECTL VERSION ==="
+                    /usr/local/bin/kubectl version --client
 
-      # Debug: prove kubectl exists in this Jenkins shell
-      echo "PATH=$PATH"
-      which kubectl || true
-      /usr/local/bin/kubectl version --client
+                    echo "=== APPLY MANIFESTS ==="
+                    /usr/local/bin/kubectl apply -n devops -f k8s/mysql-deployment.yaml
+                    /usr/local/bin/kubectl apply -n devops -f k8s/spring-deployment.yaml
 
-      # Apply manifests
-      /usr/local/bin/kubectl apply -n devops -f k8s/mysql-deployment.yaml
-      /usr/local/bin/kubectl apply -n devops -f k8s/spring-deployment.yaml
+                    echo "=== ROLLOUT STATUS ==="
+                    /usr/local/bin/kubectl rollout status -n devops deployment/mysql
+                    /usr/local/bin/kubectl rollout status -n devops deployment/student-app
 
-      echo "=== Rollout status ==="
-      /usr/local/bin/kubectl rollout status -n devops deployment/mysql
-      /usr/local/bin/kubectl rollout status -n devops deployment/student-app
+                    echo "=== VERIFY IMAGE ==="
+                    /usr/local/bin/kubectl get deploy student-app -n devops \
+                      -o=jsonpath='{.spec.template.spec.containers[0].image}'; echo
 
-      echo "=== Verify image ==="
-      /usr/local/bin/kubectl get deploy student-app -n devops -o=jsonpath='{.spec.template.spec.containers[0].image}'; echo
+                    echo "=== API TEST ==="
+                    NODEPORT=$(/usr/local/bin/kubectl get svc spring-service -n devops \
+                      -o=jsonpath='{.spec.ports[0].nodePort}')
 
-      echo "=== Pods ==="
-      /usr/local/bin/kubectl get pods -n devops -o wide
+                    NODEIP=$(/usr/local/bin/kubectl get node minikube \
+                      -o=jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
 
-      echo "=== Services ==="
-      /usr/local/bin/kubectl get svc -n devops -o wide
-
-     echo "=== API Ping ==="
-NODEPORT=$(/usr/local/bin/kubectl get svc spring-service -n devops -o=jsonpath='{.spec.ports[0].nodePort}')
-
-# Get the minikube node IP from Kubernetes (works in Jenkins)
-NODEIP=$(/usr/local/bin/kubectl get node minikube -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
-
-echo "NODEIP=$NODEIP  NODEPORT=$NODEPORT"
-
-curl -s -i http://$NODEIP:$NODEPORT/student/students/ping | head -n 20
-
-    '''
-  }
-}
-
-
-
-
-
+                    curl -s -i http://$NODEIP:$NODEPORT/student/students/ping | head -n 10
+                '''
+            }
+        }
     }
 }

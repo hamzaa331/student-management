@@ -36,7 +36,7 @@ spec:
     spec:
       containers:
         - name: student-app
-          image: hamzaab325/student-management:1.0.2
+          image: hamzaab325/student-management:1.0.3
           imagePullPolicy: Always
           ports:
             - containerPort: 8089
