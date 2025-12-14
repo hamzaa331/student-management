@@ -1,61 +1,85 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+set -e
 
-NS="devops"
-PROJECT_DIR="/mnt/c/Users/Hamza/Downloads/student-management"
-K8S_DIR="$PROJECT_DIR/k8s"
+echo "=============================="
+echo " DEVOPS FULL START (Kubernetes)"
+echo "=============================="
 
-echo "==> 0) Start LOCAL services (Docker + Jenkins old local)"
-sudo service docker start >/dev/null 2>&1 || true
-sudo service jenkins start >/dev/null 2>&1 || true
+##############################################
+# 0) START LOCAL SERVICES (DOCKER + SONARQUBE ON WINDOWS)
+##############################################
+echo "==> STEP 0: Start Docker Desktop (manually if not already)"
+echo "==> SonarQube will run from Windows on: http://localhost:9000"
 
-echo "==> 1) Start Minikube (docker driver) + context"
-minikube start --driver=docker >/dev/null
-minikube update-context >/dev/null 2>&1 || true
+##############################################
+# 1) START MINIKUBE
+##############################################
+echo "==> STEP 1: Starting Minikube..."
+minikube start --driver=docker
 
-echo "==> 2) Ensure namespace exists"
-minikube kubectl -- get ns "$NS" >/dev/null 2>&1 || minikube kubectl -- create ns "$NS"
+# Set kubectl context
+echo "==> STEP 1b: Setting kubectl context"
+kubectl config use-context minikube
 
-echo "==> 3) Apply Kubernetes YAMLs"
-minikube kubectl -- -n "$NS" apply -f "$K8S_DIR/mysql-deployment.yaml"
-minikube kubectl -- -n "$NS" apply -f "$K8S_DIR/spring-deployment.yaml"
-minikube kubectl -- -n "$NS" apply -f "$K8S_DIR/sonarqube.yaml"
-minikube kubectl -- -n "$NS" apply -f "$K8S_DIR/monitoring.yaml"
+##############################################
+# 2) CREATE NAMESPACE
+##############################################
+echo "==> STEP 2: Ensuring namespace 'devops' exists..."
+kubectl get ns devops || kubectl create namespace devops
 
-echo "==> 4) Wait for deployments"
-minikube kubectl -- -n "$NS" rollout status deploy/mysql-deployment --timeout=240s || true
-minikube kubectl -- -n "$NS" rollout status deploy/student-management-deployment --timeout=240s || true
-minikube kubectl -- -n "$NS" rollout status deploy/sonarqube --timeout=240s || true
-minikube kubectl -- -n "$NS" rollout status deploy/prometheus --timeout=240s || true
-minikube kubectl -- -n "$NS" rollout status deploy/grafana --timeout=240s || true
+##############################################
+# 3) APPLY K8S YAMLs
+##############################################
+echo "==> STEP 3: Deploying Kubernetes resources..."
 
-echo "==> 5) Background port-forwards (keep this terminal open is NOT required because of nohup)"
-# kill old port-forwards (safe)
-pkill -f "minikube kubectl -- -n $NS port-forward svc/sonarqube" 2>/dev/null || true
-pkill -f "minikube kubectl -- -n $NS port-forward svc/prometheus" 2>/dev/null || true
-pkill -f "minikube kubectl -- -n $NS port-forward svc/grafana" 2>/dev/null || true
-pkill -f "minikube kubectl -- -n $NS port-forward svc/spring-service" 2>/dev/null || true
+kubectl apply -n devops -f k8s/mysql-deployment.yaml
+kubectl apply -n devops -f k8s/student-management-deployment.yaml
+kubectl apply -n devops -f k8s/nexus-deployment.yaml
+kubectl apply -n devops -f k8s/jenkins-deployment.yaml
+kubectl apply -n devops -f k8s/sonarqube-np.yaml        # NodePort only (NOT LOCAL SERVER)
+kubectl apply -n devops -f k8s/prometheus-deployment.yaml
+kubectl apply -n devops -f k8s/grafana-deployment.yaml
 
-nohup minikube kubectl -- -n "$NS" port-forward svc/sonarqube 9000:9000 --address 127.0.0.1 >/tmp/pf-sonarqube.log 2>&1 &
-nohup minikube kubectl -- -n "$NS" port-forward svc/prometheus 9090:9090 --address 127.0.0.1 >/tmp/pf-prometheus.log 2>&1 &
-nohup minikube kubectl -- -n "$NS" port-forward svc/grafana 3000:3000 --address 127.0.0.1 >/tmp/pf-grafana.log 2>&1 &
-nohup minikube kubectl -- -n "$NS" port-forward svc/spring-service 8089:8089 --address 127.0.0.1 >/tmp/pf-spring.log 2>&1 &
+##############################################
+# 4) WAIT FOR DEPLOYMENTS
+##############################################
+echo "==> STEP 4: Waiting for all deployments to be ready..."
 
-echo "==> 6) Status"
-minikube kubectl -- -n "$NS" get pods -o wide
-echo "----"
-minikube kubectl -- -n "$NS" get svc -o wide
+kubectl rollout status deployment/mysql -n devops
+kubectl rollout status deployment/student-app -n devops
+kubectl rollout status deployment/nexus -n devops
+kubectl rollout status deployment/jenkins -n devops
+kubectl rollout status deployment/sonarqube -n devops
+kubectl rollout status deployment/prometheus -n devops
+kubectl rollout status deployment/grafana -n devops
 
-echo ""
-echo "✅ OPEN:"
-echo "Jenkins (LOCAL old):   http://localhost:8080"
-echo "Spring Boot (K8S PF):  http://127.0.0.1:8089"
-echo "SonarQube (K8S PF):    http://127.0.0.1:9000"
-echo "Prometheus (K8S PF):   http://127.0.0.1:9090"
-echo "Grafana (K8S PF):      http://127.0.0.1:3000"
-echo ""
-echo "Logs:"
-echo "tail -n 80 /tmp/pf-sonarqube.log"
-echo "tail -n 80 /tmp/pf-prometheus.log"
-echo "tail -n 80 /tmp/pf-grafana.log"
-echo "tail -n 80 /tmp/pf-spring.log"
+##############################################
+# 5) PORT FORWARDING FOR DASHBOARDS
+##############################################
+echo "==> STEP 5: Port forwarding (background mode)..."
+
+# Jenkins UI
+kubectl port-forward -n devops svc/jenkins 8088:8080 >/dev/null 2>&1 &
+
+# Nexus UI
+kubectl port-forward -n devops svc/nexus 8081:8081 >/dev/null 2>&1 &
+
+# Spring Boot App
+kubectl port-forward -n devops svc/spring-service 8089:8080 >/dev/null 2>&1 &
+
+# Prometheus UI
+kubectl port-forward -n devops svc/prometheus 9090:9090 >/dev/null 2>&1 &
+
+# Grafana UI
+kubectl port-forward -n devops svc/grafana 3000:3000 >/dev/null 2>&1 &
+
+echo "=============================="
+echo " SERVICES READY!"
+echo "=============================="
+echo "Jenkins:       http://localhost:8088"
+echo "Nexus:         http://localhost:8081"
+echo "Spring App:    http://localhost:8089/student/students/getAllStudents"
+echo "Prometheus:    http://localhost:9090"
+echo "Grafana:       http://localhost:3000"
+echo "SonarQube:     http://localhost:9000  (LOCAL WINDOWS VERSION)"
+echo "=============================="
