@@ -105,9 +105,16 @@ pipeline {
       echo "=== Services ==="
       /usr/local/bin/kubectl get svc -n devops -o wide
 
-      echo "=== API Ping ==="
-      NODEPORT=$(/usr/local/bin/kubectl get svc spring-service -n devops -o=jsonpath='{.spec.ports[0].nodePort}')
-      curl -s -i http://$(minikube ip):$NODEPORT/student/students/ping | head -n 20
+     echo "=== API Ping ==="
+NODEPORT=$(/usr/local/bin/kubectl get svc spring-service -n devops -o=jsonpath='{.spec.ports[0].nodePort}')
+
+# Get the minikube node IP from Kubernetes (works in Jenkins)
+NODEIP=$(/usr/local/bin/kubectl get node minikube -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
+
+echo "NODEIP=$NODEIP  NODEPORT=$NODEPORT"
+
+curl -s -i http://$NODEIP:$NODEPORT/student/students/ping | head -n 20
+
     '''
   }
 }
