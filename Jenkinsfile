@@ -55,7 +55,7 @@ pipeline {
   steps {
     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
       sh '''
-        SONAR_URL="http://sonarqube.devops.svc.cluster.local:9000"
+        SONAR_URL="http://192.168.49.2:30090"
         echo "Using SONAR_URL=$SONAR_URL"
         curl -s "$SONAR_URL/api/system/status" || true
 
