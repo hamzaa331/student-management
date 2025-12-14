@@ -79,29 +79,36 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes') {
-            steps {
-                 sh '''
-                    echo "=== Déploiement sur Kubernetes (namespace devops) ==="
+  steps {
+    sh '''
+      echo "=== K8s Deploy (minikube / namespace devops) ==="
 
-                    # Dire à kubectl d'utiliser le kubeconfig du user jenkins
-                    export KUBECONFIG=/var/lib/jenkins/.kube/config
+      # Appliquer les manifests
+      kubectl apply -n devops -f k8s/mysql-deployment.yaml
+      kubectl apply -n devops -f k8s/spring-deployment.yaml
 
-                    # ⚠ kubectl avec son chemin COMPLET
-                   /usr/local/bin/kubectl apply -f k8s/mysql-deployment.yaml -n devops
-                   /usr/local/bin/kubectl apply -f k8s/spring-deployment.yaml -n devops
+      echo "=== Rollout status ==="
+      kubectl rollout status -n devops deployment/mysql
+      kubectl rollout status -n devops deployment/student-app
 
-                   echo "=== Rollout status ==="
-                   /usr/local/bin/kubectl rollout status deployment/mysql-deployment -n devops
-                   /usr/local/bin/kubectl rollout status deployment/student-management-deployment -n devops
+      echo "=== Verify image ==="
+      kubectl get deploy student-app -n devops -o=jsonpath='{.spec.template.spec.containers[0].image}'; echo
 
-                   echo "=== Pods dans le namespace devops ==="
-                   /usr/local/bin/kubectl get pods -n devops
+      echo "=== Pods ==="
+      kubectl get pods -n devops -o wide
 
-                   echo "=== Services dans le namespace devops ==="
-                   /usr/local/bin/kubectl get svc -n devops
-                   '''
-                   }
-        }
+      echo "=== Services ==="
+      kubectl get svc -n devops -o wide
+
+      echo "=== API Ping ==="
+      NODEPORT=$(kubectl get svc spring-service -n devops -o=jsonpath='{.spec.ports[0].nodePort}')
+      curl -s -i http://$(minikube ip):$NODEPORT/student/students/ping | head -n 20
+    '''
+  }
+}
+
+
+
 
     }
 }

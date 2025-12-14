@@ -4,7 +4,8 @@ metadata:
   name: spring-config
   namespace: devops
 data:
-  SPRING_DATASOURCE_URL: jdbc:mysql://mysql-deployment:3306/student_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql-service:3306/student_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+
 
 ---
 apiVersion: v1
@@ -21,20 +22,20 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: student-management-deployment
+  name: student-app
   namespace: devops
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: student-management
+      app: student-app
   template:
     metadata:
       labels:
-        app: student-management
+        app: student-app
     spec:
       containers:
-        - name: student-management
+        - name: student-app
           image: hamzaab325/student-management:1.0.2
           imagePullPolicy: Always
           ports:
@@ -65,8 +66,8 @@ metadata:
 spec:
   type: NodePort
   selector:
-    app: student-management
+    app: student-app
   ports:
     - port: 8089
       targetPort: 8089
-      nodePort: 30081   # <-- NOUVEAU port, pour éviter le conflit 30080
+      #nodePort: 30081   # <-- NOUVEAU port, pour éviter le conflit 30080

@@ -20,7 +20,7 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mysql-deployment
+  name: mysql
   namespace: devops
 spec:
   replicas: 1
@@ -54,7 +54,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mysql-deployment
+  name: mysql-service
   namespace: devops
 spec:
   type: ClusterIP
