@@ -83,29 +83,35 @@ pipeline {
     sh '''
       echo "=== K8s Deploy (minikube / namespace devops) ==="
 
-      # Appliquer les manifests
-      kubectl apply -n devops -f k8s/mysql-deployment.yaml
-      kubectl apply -n devops -f k8s/spring-deployment.yaml
+      # Debug: prove kubectl exists in this Jenkins shell
+      echo "PATH=$PATH"
+      which kubectl || true
+      /usr/local/bin/kubectl version --client
+
+      # Apply manifests
+      /usr/local/bin/kubectl apply -n devops -f k8s/mysql-deployment.yaml
+      /usr/local/bin/kubectl apply -n devops -f k8s/spring-deployment.yaml
 
       echo "=== Rollout status ==="
-      kubectl rollout status -n devops deployment/mysql
-      kubectl rollout status -n devops deployment/student-app
+      /usr/local/bin/kubectl rollout status -n devops deployment/mysql
+      /usr/local/bin/kubectl rollout status -n devops deployment/student-app
 
       echo "=== Verify image ==="
-      kubectl get deploy student-app -n devops -o=jsonpath='{.spec.template.spec.containers[0].image}'; echo
+      /usr/local/bin/kubectl get deploy student-app -n devops -o=jsonpath='{.spec.template.spec.containers[0].image}'; echo
 
       echo "=== Pods ==="
-      kubectl get pods -n devops -o wide
+      /usr/local/bin/kubectl get pods -n devops -o wide
 
       echo "=== Services ==="
-      kubectl get svc -n devops -o wide
+      /usr/local/bin/kubectl get svc -n devops -o wide
 
       echo "=== API Ping ==="
-      NODEPORT=$(kubectl get svc spring-service -n devops -o=jsonpath='{.spec.ports[0].nodePort}')
+      NODEPORT=$(/usr/local/bin/kubectl get svc spring-service -n devops -o=jsonpath='{.spec.ports[0].nodePort}')
       curl -s -i http://$(minikube ip):$NODEPORT/student/students/ping | head -n 20
     '''
   }
 }
+
 
 
 
