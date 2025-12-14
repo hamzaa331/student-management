@@ -20,8 +20,6 @@ pipeline {
             }
         }
 
-
-
         // ===============================
         // 2. CHECK NEXUS
         // ===============================
@@ -31,13 +29,6 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                // clean + compile + tests
-                sh 'mvn clean test'
-            }
-        }
-        
         // ===============================
         // 3. BUILD + TEST (MAVEN via NEXUS)
         // ===============================
