@@ -34,23 +34,22 @@ pipeline {
     }
 
     stage('SonarQube Analysis') {
-      steps {
-        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-          sh '''
-            SONAR_NODEPORT=30090
-            MINIKUBE_IP=$(/usr/local/bin/kubectl get node minikube -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
-            SONAR_URL="http://${MINIKUBE_IP}:${SONAR_NODEPORT}"
+  steps {
+    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+      sh '''
+        SONAR_URL="http://sonarqube.devops.svc.cluster.local:9000"
+        echo "Using SONAR_URL=$SONAR_URL"
+        curl -s "$SONAR_URL/api/system/status" || true
 
-            echo "Using SONAR_URL=$SONAR_URL"
-            curl -s -I "$SONAR_URL" | head -n 5 || true
-
-            mvn -s settings.xml sonar:sonar \
-              -Dsonar.host.url="$SONAR_URL" \
-              -Dsonar.login="$SONAR_TOKEN"
-          '''
-        }
-      }
+        mvn -s settings.xml sonar:sonar \
+          -Dsonar.host.url="$SONAR_URL" \
+          -Dsonar.login="$SONAR_TOKEN"
+      '''
     }
+  }
+}
+
+
 
     stage('Build Docker Image') {
       steps {

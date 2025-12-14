@@ -10,4 +10,19 @@
     </mirror>
   </mirrors>
 
+  <servers>
+  <server>
+    <id>nexus-snapshots</id>
+    <username>admin</username>
+    <password>580b968f-dc24-4d3b-9506-c62769e63da9</password>
+  </server>
+
+  <server>
+    <id>nexus-releases</id>
+    <username>admin</username>
+    <password>580b968f-dc24-4d3b-9506-c62769e63da9</password>
+  </server>
+</servers>
+
+
 </settings>
