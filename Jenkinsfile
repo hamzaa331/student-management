@@ -53,7 +53,7 @@ pipeline {
 
     stage('SonarQube Analysis') {
   steps {
-    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+    withCredentials([string(credentialsId: 'sonar-token-student', variable: 'SONAR_TOKEN')]) {
   sh '''
     mvn -s settings.xml sonar:sonar \
       -Dsonar.host.url=http://localhost:9001 \
