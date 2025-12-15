@@ -52,21 +52,18 @@ pipeline {
 
 
     stage('SonarQube Analysis') {
-    steps {
-        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-            sh '''
-                SONAR_URL="http://127.0.0.1:40249"
-                echo "Using SONAR_URL=$SONAR_URL"
-
-                curl -s "$SONAR_URL/api/system/status" || true
-
-                mvn -s settings.xml sonar:sonar \
-                  -Dsonar.host.url="$SONAR_URL" \
-                  -Dsonar.login="$SONAR_TOKEN"
-            '''
-        }
-    }
+  steps {
+    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+  sh '''
+    mvn -s settings.xml sonar:sonar \
+      -Dsonar.host.url=http://localhost:9001 \
+      -Dsonar.token=$SONAR_TOKEN
+  '''
 }
+
+  }
+}
+
 
 
 
