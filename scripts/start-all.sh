@@ -2,84 +2,53 @@
 set -e
 
 echo "=============================="
-echo " DEVOPS FULL START (Kubernetes)"
+echo "   DEVOPS FULL START"
 echo "=============================="
 
-##############################################
-# 0) START LOCAL SERVICES (DOCKER + SONARQUBE ON WINDOWS)
-##############################################
-echo "==> STEP 0: Start Docker Desktop (manually if not already)"
-echo "==> SonarQube will run from Windows on: http://localhost:9000"
+echo "➡️  STEP 0 — Make sure Docker Desktop is started manually"
+echo ""
 
-##############################################
-# 1) START MINIKUBE
-##############################################
-echo "==> STEP 1: Starting Minikube..."
+echo "➡️  STEP 1 — Start Minikube"
 minikube start --driver=docker
 
-# Set kubectl context
-echo "==> STEP 1b: Setting kubectl context"
+echo "➡️  STEP 1b — Set kubectl context"
 kubectl config use-context minikube
 
-##############################################
-# 2) CREATE NAMESPACE
-##############################################
-echo "==> STEP 2: Ensuring namespace 'devops' exists..."
-kubectl get ns devops || kubectl create namespace devops
+echo "➡️  STEP 2 — Create namespace 'devops' if missing"
+kubectl get namespace devops || kubectl create namespace devops
 
-##############################################
-# 3) APPLY K8S YAMLs
-##############################################
-echo "==> STEP 3: Deploying Kubernetes resources..."
-
+echo "➡️  STEP 3 — Apply MySQL"
 kubectl apply -n devops -f k8s/mysql-deployment.yaml
-kubectl apply -n devops -f k8s/student-management-deployment.yaml
-kubectl apply -n devops -f k8s/nexus-deployment.yaml
-kubectl apply -n devops -f k8s/jenkins-deployment.yaml
-kubectl apply -n devops -f k8s/sonarqube-np.yaml        # NodePort only (NOT LOCAL SERVER)
-kubectl apply -n devops -f k8s/prometheus-deployment.yaml
-kubectl apply -n devops -f k8s/grafana-deployment.yaml
 
-##############################################
-# 4) WAIT FOR DEPLOYMENTS
-##############################################
-echo "==> STEP 4: Waiting for all deployments to be ready..."
+echo "➡️  STEP 4 — Apply Spring Backend"
+kubectl apply -n devops -f k8s/spring-deployment.yaml
 
-kubectl rollout status deployment/mysql -n devops
-kubectl rollout status deployment/student-app -n devops
-kubectl rollout status deployment/nexus -n devops
-kubectl rollout status deployment/jenkins -n devops
-kubectl rollout status deployment/sonarqube -n devops
-kubectl rollout status deployment/prometheus -n devops
-kubectl rollout status deployment/grafana -n devops
+echo "➡️  STEP 5 — Apply Monitoring (Prometheus + Grafana)"
+kubectl apply -n devops -f k8s/monitoring.yaml
 
-##############################################
-# 5) PORT FORWARDING FOR DASHBOARDS
-##############################################
-echo "==> STEP 5: Port forwarding (background mode)..."
+echo "➡️  STEP 6 — SKIPPED — Jenkins is NOT deployed to Kubernetes"
+echo "    ✔ Using SYSTEM Jenkins instead → http://localhost:8080"
 
-# Jenkins UI
-kubectl port-forward -n devops svc/jenkins 8088:8080 >/dev/null 2>&1 &
+echo "➡️  STEP 7 — Start Jenkins SYSTEM service"
+sudo service jenkins start
 
-# Nexus UI
-kubectl port-forward -n devops svc/nexus 8081:8081 >/dev/null 2>&1 &
+echo "➡️  STEP 8 — Wait for pods to be ready"
+kubectl -n devops rollout status deployment/mysql
+kubectl -n devops rollout status deployment/student-management-deployment || true
+kubectl -n devops rollout status deployment/grafana-deployment || true
+kubectl -n devops rollout status deployment/prometheus-deployment || true
 
-# Spring Boot App
-kubectl port-forward -n devops svc/spring-service 8089:8080 >/dev/null 2>&1 &
+echo "➡️  STEP 9 — Start port-forwards (run in background)"
+nohup kubectl -n devops port-forward svc/spring-service 8089:8089 >/dev/null 2>&1 &
+nohup kubectl -n devops port-forward svc/grafana 3000:3000 >/dev/null 2>&1 &
+nohup kubectl -n devops port-forward svc/prometheus 9090:9090 >/dev/null 2>&1 &
 
-# Prometheus UI
-kubectl port-forward -n devops svc/prometheus 9090:9090 >/dev/null 2>&1 &
-
-# Grafana UI
-kubectl port-forward -n devops svc/grafana 3000:3000 >/dev/null 2>&1 &
-
+echo ""
 echo "=============================="
-echo " SERVICES READY!"
+echo "   ✔ ALL SERVICES STARTED"
 echo "=============================="
-echo "Jenkins:       http://localhost:8088"
-echo "Nexus:         http://localhost:8081"
-echo "Spring App:    http://localhost:8089/student/students/getAllStudents"
-echo "Prometheus:    http://localhost:9090"
-echo "Grafana:       http://localhost:3000"
-echo "SonarQube:     http://localhost:9000  (LOCAL WINDOWS VERSION)"
-echo "=============================="
+echo "Spring Backend → http://localhost:8089/student/students/getAllStudents"
+echo "Grafana → http://localhost:3000"
+echo "Prometheus → http://localhost:9090"
+echo "Jenkins (system) → http://localhost:8080"
+echo "SonarQube (Windows) → http://localhost:9000"

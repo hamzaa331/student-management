@@ -1,13 +1,19 @@
 #!/bin/bash
 echo "=============================="
-echo " DEVOPS FULL STOP"
+echo "   DEVOPS FULL STOP"
 echo "=============================="
 
-echo "==> Killing ALL port-forward processes..."
-pkill -f "kubectl port-forward" || true
+echo "➡️  Kill port-forward processes"
+pkill -f "kubectl -n devops port-forward" || true
 
-echo "==> Stopping Minikube..."
-minikube stop
+echo "➡️  Stop Jenkins SYSTEM service"
+sudo service jenkins stop || true
 
-echo "==> DevOps environment stopped successfully!"
+echo "➡️  Stop Minikube"
+minikube stop || true
+
+echo "➡️  NOTHING will stop Docker Jenkins, because you do NOT use Docker Jenkins anymore."
+
+echo "=============================="
+echo "   ✔ ALL STOPPED CLEANLY"
 echo "=============================="
