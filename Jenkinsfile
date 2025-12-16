@@ -90,8 +90,8 @@ pipeline {
     sh """
       mvn -s settings.xml clean verify sonar:sonar \
         -Dsonar.projectKey=tn.esprit:student-management \
-        -Dsonar.projectVersion=1.0.$(date +%s)
-        -Dsonar.token=squ_46bf793d59d8fd7ebd856c4d5a61b894c347c93b \
+        -Dsonar.projectVersion=${BUILD_NUMBER} \
+        -Dsonar.token=${SONAR_TOKEN} \
         -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
     """
   }
