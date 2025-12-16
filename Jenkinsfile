@@ -83,21 +83,22 @@ pipeline {
     /* =======================
        6. SONARQUBE
     ======================== */
-    
-
     stage('SonarQube Analysis') {
   steps {
     withSonarQubeEnv('sonarqube-docker') {
-      sh """
-        mvn -s settings.xml clean verify sonar:sonar \
-          -Dsonar.host.url=http://127.0.0.1:9001 \
-          -Dsonar.projectKey=tn.esprit:student-management \
-          -Dsonar.projectVersion=${BUILD_NUMBER} \
-          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-      """
-    }
+  withCredentials([string(credentialsId: 'sonar-token-student', variable: 'SONAR_TOKEN')]) {
+    sh """
+      mvn -s settings.xml clean verify sonar:sonar \
+        -Dsonar.projectKey=tn.esprit:student-management \
+        -Dsonar.projectVersion=${BUILD_NUMBER} \
+        -Dsonar.token=${SONAR_TOKEN} \
+        -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+    """
   }
 }
+  }
+}
+
 
 
 
