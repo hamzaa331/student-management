@@ -85,17 +85,20 @@ pipeline {
     ======================== */
     stage('SonarQube Analysis') {
   steps {
-    withSonarQubeEnv('sonarqube-docker') { // <-- name you set in Jenkins global config
-      sh """
-  mvn -s settings.xml clean verify sonar:sonar \
-    -Dsonar.projectKey=tn.esprit:student-management \
-    -Dsonar.projectVersion=${BUILD_NUMBER} \
-    -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-"""
-
-    }
+    withSonarQubeEnv('sonarqube-docker') {
+  withCredentials([string(credentialsId: 'sonar-token-student', variable: 'SONAR_TOKEN')]) {
+    sh """
+      mvn -s settings.xml clean verify sonar:sonar \
+        -Dsonar.projectKey=tn.esprit:student-management \
+        -Dsonar.projectVersion=${BUILD_NUMBER} \
+        -Dsonar.token=${SONAR_TOKEN} \
+        -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+    """
   }
 }
+  }
+}
+
 
 
 
