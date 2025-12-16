@@ -33,6 +33,7 @@
   <sonar.projectKey>tn.esprit:student-management</sonar.projectKey>
   <sonar.projectName>student-management</sonar.projectName>
   <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+  <sonar.coverage.exclusions>**/*Application.java,**/*Application*.java,**/StudentManagementApplication.java,tn/esprit/studentmanagement/StudentManagementApplication.java</sonar.coverage.exclusions>
 </properties>
 
     <dependencies>
@@ -127,6 +128,7 @@
   <configuration>
     <excludes>
       <exclude>**/*Application*.class</exclude>
+      <exclude>**/StudentManagementApplication.class</exclude>
     </excludes>
   </configuration>
 
