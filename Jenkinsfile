@@ -99,9 +99,6 @@ pipeline {
 
 
 
-  }
-}
-
 
     /* =======================
        7. PACKAGE APPLICATION
