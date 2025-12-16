@@ -2,74 +2,98 @@ pipeline {
   agent any
 
   options {
-    skipDefaultCheckout(true)
     timestamps()
+    skipDefaultCheckout(true)
   }
 
   environment {
     DOCKER_IMAGE = "hamzaab325/student-management:1.0.3"
     NEXUS_REPO   = "http://localhost:8081/repository/maven-public/"
-    NS           = "devops"
+    KUBE_NS     = "devops"
   }
 
   stages {
 
-    stage('Checkout') {
+    /* =======================
+       1. SOURCE CONTROL
+    ======================== */
+    stage('Checkout Source Code') {
       steps {
         git branch: 'main',
             url: 'https://github.com/hamzaa331/student-management.git'
       }
     }
 
-    stage('Check Nexus') {
-  steps {
-    sh '''
-      set -e
-      code=$(curl -s -o /dev/null -w "%{http_code}" ${NEXUS_REPO})
-      echo "Nexus HTTP code: $code"
-      if [ "$code" != "200" ] && [ "$code" != "401" ]; then
-        echo "Nexus not reachable (expected 200 or 401)"
-        exit 1
-      fi
-    '''
-  }
-}
-
-
-    stage('Build & Test (Maven via Nexus)') {
-  steps {
-    withCredentials([usernamePassword(
-      credentialsId: 'nexus-cred',
-      usernameVariable: 'NEXUS_USER',
-      passwordVariable: 'NEXUS_PASS'
-    )]) {
-      sh '''
-        mvn -s settings.xml -U clean verify jacoco:report
-      '''
+    /* =======================
+       2. DEPENDENCY REPOSITORY
+    ======================== */
+    stage('Check Nexus Availability') {
+      steps {
+        sh '''
+          code=$(curl -s -o /dev/null -w "%{http_code}" ${NEXUS_REPO})
+          echo "Nexus HTTP code = $code"
+          if [ "$code" != "200" ] && [ "$code" != "401" ]; then
+            exit 1
+          fi
+        '''
+      }
     }
-  }
-}
 
+    /* =======================
+       3. COMPILE
+    ======================== */
+    stage('Maven Compile') {
+      steps {
+        sh 'mvn -s settings.xml clean compile'
+      }
+    }
 
+    /* =======================
+       4. UNIT TESTS
+    ======================== */
+    stage('Unit Tests (JUnit)') {
+      steps {
+        sh 'mvn -s settings.xml test'
+      }
+    }
+
+    /* =======================
+       5. CODE COVERAGE
+    ======================== */
+    stage('JaCoCo Coverage') {
+      steps {
+        sh 'mvn -s settings.xml jacoco:report'
+      }
+    }
+
+    /* =======================
+       6. SONARQUBE
+    ======================== */
     stage('SonarQube Analysis') {
-  steps {
-    withCredentials([string(credentialsId: 'sonar-token-student', variable: 'SONAR_TOKEN')]) {
-  sh '''
-    mvn -s settings.xml sonar:sonar \
-      -Dsonar.host.url=http://localhost:9001 \
-      -Dsonar.token=$SONAR_TOKEN
-  '''
-}
+      steps {
+        withCredentials([string(credentialsId: 'sonar-token-student', variable: 'SONAR_TOKEN')]) {
+          sh '''
+            mvn -s settings.xml sonar:sonar \
+              -Dsonar.host.url=http://localhost:9001 \
+              -Dsonar.token=$SONAR_TOKEN \
+              -Dsonar.projectKey=tn.esprit:student-management
+          '''
+        }
+      }
+    }
 
-  }
-}
+    /* =======================
+       7. PACKAGE APPLICATION
+    ======================== */
+    stage('Maven Package') {
+      steps {
+        sh 'mvn -s settings.xml package -DskipTests'
+      }
+    }
 
-
-
-
-
-
-
+    /* =======================
+       8. DOCKER IMAGE
+    ======================== */
     stage('Build Docker Image') {
       steps {
         sh 'docker build -t ${DOCKER_IMAGE} -f Docker/student-app/Dockerfile .'
@@ -91,29 +115,48 @@ pipeline {
       }
     }
 
+    /* =======================
+       9. KUBERNETES
+    ======================== */
     stage('Deploy to Kubernetes') {
       steps {
         sh '''
-          echo "=== APPLY MANIFESTS ==="
-          /usr/local/bin/kubectl apply -n ${NS} -f k8s/mysql-deployment.yaml
-          /usr/local/bin/kubectl apply -n ${NS} -f k8s/spring-deployment.yaml
+          kubectl apply -n ${KUBE_NS} -f k8s/mysql-deployment.yaml
+          kubectl apply -n ${KUBE_NS} -f k8s/spring-deployment.yaml
 
-          echo "=== ROLLOUT STATUS ==="
-          /usr/local/bin/kubectl rollout status -n ${NS} deployment/mysql
-          /usr/local/bin/kubectl rollout status -n ${NS} deployment/student-app
+          kubectl rollout status -n ${KUBE_NS} deployment/mysql
+          kubectl rollout status -n ${KUBE_NS} deployment/student-app
+        '''
+      }
+    }
 
-          echo "=== PODS ==="
-          /usr/local/bin/kubectl get pods -n ${NS} -o wide
+    stage('Deploy Monitoring (Prometheus & Grafana)') {
+  steps {
+    sh '''
+      echo "=== DEPLOY PROMETHEUS + GRAFANA ==="
+      kubectl apply -n ${NS} -f k8s/monitoring.yaml
 
-          echo "=== SERVICES ==="
-          /usr/local/bin/kubectl get svc -n ${NS} -o wide
+      echo "=== WAIT FOR ROLLOUT ==="
+      kubectl rollout status -n ${NS} deployment/prometheus
+      kubectl rollout status -n ${NS} deployment/grafana
 
-          echo "=== API TEST ==="
-          NODEPORT=$(/usr/local/bin/kubectl get svc spring-service -n ${NS} -o=jsonpath='{.spec.ports[0].nodePort}')
-          NODEIP=$(/usr/local/bin/kubectl get node minikube -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
+      echo "=== SERVICES ==="
+      kubectl get svc -n ${NS} prometheus grafana -o wide
+    '''
+  }
+}
 
-          echo "NODEIP=$NODEIP NODEPORT=$NODEPORT"
-          curl -s -i http://$NODEIP:$NODEPORT/student/students/ping | head -n 20
+
+    /* =======================
+       10. APPLICATION CHECK
+    ======================== */
+    stage('Health Check (Spring Actuator)') {
+      steps {
+        sh '''
+          NODEPORT=$(kubectl get svc spring-service -n ${KUBE_NS} -o=jsonpath='{.spec.ports[0].nodePort}')
+          NODEIP=$(kubectl get node minikube -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
+
+          curl -f http://$NODEIP:$NODEPORT/student/actuator/health
         '''
       }
     }
