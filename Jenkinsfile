@@ -13,7 +13,6 @@ pipeline {
   }
 
   stages {
-
     /* =======================
        1. SOURCE CONTROL
     ======================== */
@@ -23,6 +22,21 @@ pipeline {
             url: 'https://github.com/hamzaa331/student-management.git'
       }
     }
+
+    stage('Prepare kubectl') {
+  steps {
+    sh '''
+      set -e
+      if [ ! -f ./kubectl ]; then
+        echo "Downloading kubectl into workspace..."
+        curl -LO https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl
+        chmod +x ./kubectl
+      fi
+      ./kubectl version --client
+    '''
+  }
+}
+
 
     /* =======================
        2. DEPENDENCY REPOSITORY
@@ -119,46 +133,54 @@ pipeline {
        9. KUBERNETES
     ======================== */
     stage('Deploy to Kubernetes') {
-      steps {
-        sh '''
-          kubectl apply -n ${KUBE_NS} -f k8s/mysql-deployment.yaml
-          kubectl apply -n ${KUBE_NS} -f k8s/spring-deployment.yaml
+  steps {
+    sh '''
+      set -e
+      ./kubectl apply -n ${KUBE_NS} -f k8s/mysql-deployment.yaml
+      ./kubectl apply -n ${KUBE_NS} -f k8s/spring-deployment.yaml
 
-          kubectl rollout status -n ${KUBE_NS} deployment/mysql
-          kubectl rollout status -n ${KUBE_NS} deployment/student-app
-        '''
-      }
-    }
+      ./kubectl rollout status -n ${KUBE_NS} deployment/mysql
+      ./kubectl rollout status -n ${KUBE_NS} deployment/student-app
+    '''
+  }
+}
+
 
     stage('Deploy Monitoring (Prometheus & Grafana)') {
   steps {
     sh '''
+      set -e
       echo "=== DEPLOY PROMETHEUS + GRAFANA ==="
-      kubectl apply -n ${NS} -f k8s/monitoring.yaml
+      ./kubectl apply -n ${KUBE_NS} -f k8s/monitoring.yaml
 
       echo "=== WAIT FOR ROLLOUT ==="
-      kubectl rollout status -n ${NS} deployment/prometheus
-      kubectl rollout status -n ${NS} deployment/grafana
+      ./kubectl rollout status -n ${KUBE_NS} deployment/prometheus
+      ./kubectl rollout status -n ${KUBE_NS} deployment/grafana
 
       echo "=== SERVICES ==="
-      kubectl get svc -n ${NS} prometheus grafana -o wide
+      ./kubectl get svc -n ${KUBE_NS} prometheus grafana -o wide
     '''
   }
 }
+
+
+
 
 
     /* =======================
        10. APPLICATION CHECK
     ======================== */
     stage('Health Check (Spring Actuator)') {
-      steps {
-        sh '''
-          NODEPORT=$(kubectl get svc spring-service -n ${KUBE_NS} -o=jsonpath='{.spec.ports[0].nodePort}')
-          NODEIP=$(kubectl get node minikube -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
+  steps {
+    sh '''
+      set -e
+      NODEPORT=$(./kubectl get svc spring-service -n ${KUBE_NS} -o=jsonpath='{.spec.ports[0].nodePort}')
+      NODEIP=$(./kubectl get node minikube -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
 
-          curl -f http://$NODEIP:$NODEPORT/student/actuator/health
-        '''
-      }
-    }
+      curl -f http://$NODEIP:$NODEPORT/student/actuator/health
+    '''
+  }
+}
+
   }
 }
