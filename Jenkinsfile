@@ -84,17 +84,27 @@ pipeline {
        6. SONARQUBE
     ======================== */
     stage('SonarQube Analysis') {
-      steps {
-        withCredentials([string(credentialsId: 'sonar-token-student', variable: 'SONAR_TOKEN')]) {
-          sh '''
-            mvn -s settings.xml sonar:sonar \
-              -Dsonar.host.url=http://localhost:9001 \
-              -Dsonar.token=$SONAR_TOKEN \
-              -Dsonar.projectKey=tn.esprit:student-management
-          '''
-        }
-      }
+  steps {
+    withSonarQubeEnv('sonarqube-docker') { // <-- name you set in Jenkins global config
+      sh """
+  mvn -s settings.xml clean verify sonar:sonar \
+    -Dsonar.projectKey=tn.esprit:student-management \
+    -Dsonar.projectVersion=${BUILD_NUMBER} \
+    -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+"""
+
     }
+  }
+}
+
+stage('Quality Gate') {
+  steps {
+    timeout(time: 2, unit: 'MINUTES') {
+      waitForQualityGate abortPipeline: true
+    }
+  }
+}
+
 
     /* =======================
        7. PACKAGE APPLICATION
