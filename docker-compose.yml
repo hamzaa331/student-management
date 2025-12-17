@@ -26,13 +26,25 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-service:3306/studentdb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/studentdb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: student
       SPRING_DATASOURCE_PASSWORD: studentpass
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SERVER_PORT: 8089
     ports:
       - "8089:8089"
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: student-management/Docker/frontend/Dockerfile
+    container_name: student-frontend
+    depends_on:
+      - student-app
+    environment:
+      BACKEND_BASE_URL: "http://student-app:8089/student"
+    ports:
+      - "4200:80"
 
 volumes:
   mysql_data:
