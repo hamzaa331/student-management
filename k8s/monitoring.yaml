@@ -20,8 +20,8 @@ data:
       - job_name: 'jenkins'
         metrics_path: /prometheus
         basic_auth:
-          username: 'admin'  # Change to your Jenkins username
-          password: '11161aadac6590455adf13a49c9be6d34b'  # Replace with your Jenkins API token
+          username: 'admin'
+          password: 'hamzahamza'  # Your Jenkins admin password
         static_configs:
           - targets: ['jenkins:8080']
 
