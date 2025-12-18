@@ -10,7 +10,6 @@ pipeline {
     DOCKER_IMAGE = "hamzaab325/student-management:1.0.3"
     NEXUS_REPO   = "http://localhost:8081/repository/maven-public/"
     KUBE_NS     = "devops"
-    KCTL        = "./kubectl --insecure-skip-tls-verify=true"
   }
 
   stages {
@@ -144,11 +143,11 @@ pipeline {
   steps {
     sh '''
       set -e
-      $KCTL apply -n ${KUBE_NS} -f k8s/mysql-deployment.yaml --validate=false
-      $KCTL apply -n ${KUBE_NS} -f k8s/spring-deployment.yaml --validate=false
+      ./kubectl apply -n ${KUBE_NS} -f k8s/mysql-deployment.yaml
+      ./kubectl apply -n ${KUBE_NS} -f k8s/spring-deployment.yaml
 
-      $KCTL rollout status -n ${KUBE_NS} deployment/mysql
-      $KCTL rollout status -n ${KUBE_NS} deployment/student-app
+      ./kubectl rollout status -n ${KUBE_NS} deployment/mysql
+      ./kubectl rollout status -n ${KUBE_NS} deployment/student-app
     '''
   }
 }
@@ -159,14 +158,14 @@ pipeline {
     sh '''
       set -e
       echo "=== DEPLOY PROMETHEUS + GRAFANA ==="
-      $KCTL apply -n ${KUBE_NS} -f k8s/monitoring.yaml --validate=false
+      ./kubectl apply -n ${KUBE_NS} -f k8s/monitoring.yaml
 
       echo "=== WAIT FOR ROLLOUT ==="
-      $KCTL rollout status -n ${KUBE_NS} deployment/prometheus
-      $KCTL rollout status -n ${KUBE_NS} deployment/grafana
+      ./kubectl rollout status -n ${KUBE_NS} deployment/prometheus
+      ./kubectl rollout status -n ${KUBE_NS} deployment/grafana
 
       echo "=== SERVICES ==="
-      $KCTL get svc -n ${KUBE_NS} prometheus grafana -o wide
+      ./kubectl get svc -n ${KUBE_NS} prometheus grafana -o wide
     '''
   }
 }
@@ -182,8 +181,8 @@ pipeline {
   steps {
     sh '''
       set -e
-      NODEPORT=$($KCTL get svc spring-service -n ${KUBE_NS} -o=jsonpath='{.spec.ports[0].nodePort}')
-      NODEIP=$($KCTL get node minikube -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
+      NODEPORT=$(./kubectl get svc spring-service -n ${KUBE_NS} -o=jsonpath='{.spec.ports[0].nodePort}')
+      NODEIP=$(./kubectl get node minikube -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
 
       curl -f http://$NODEIP:$NODEPORT/student/actuator/health
     '''

@@ -12,17 +12,13 @@ class StudentManagementApplicationMainTest {
 
     @Test
     void testMainMethod() {
-        // Force Spring Boot to use the in‑memory H2 "test" profile instead of MySQL
-        System.setProperty("spring.profiles.active", "test");
-
-        // Prevent the application from actually starting a web server
+        // Prevent the application from actually starting a server
         System.setProperty("spring.main.web-application-type", "none");
-
+        
         // Call the main method and assert it doesn't throw an exception
         assertDoesNotThrow(() -> StudentManagementApplication.main(new String[]{}));
-
+        
         // Clean up
-        System.clearProperty("spring.profiles.active");
         System.clearProperty("spring.main.web-application-type");
     }
 }
